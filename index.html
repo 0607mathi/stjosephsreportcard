@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="theme-color" content="#2563eb">
+<title>Students Mark Register</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{
+  --bg:#eef2f9; --card:#ffffff; --text:#1e293b; --muted:#64748b;
+  --primary:#2563eb; --primary-d:#1d4ed8; --danger:#dc2626; --danger-bg:#fee2e2;
+  --success:#16a34a; --success-bg:#dcfce7; --border:#e2e8f0; --line:#eef2f7;
+  --absent:#f59e0b; --absent-bg:#fef3c7; --absent-d:#b45309;
+  --sticky-w1: 38px; --sticky-w2: 138px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  background:var(--bg); color:var(--text); font-size:15px; -webkit-text-size-adjust:100%;
+  padding-bottom:40px;
+}
+.app-header{
+  background:linear-gradient(135deg,#1e3a8a,#2563eb);
+  color:#fff; padding:14px 14px;
+}
+.header-inner{
+  display:flex; align-items:center; justify-content:center; gap:12px;
+  max-width:760px; margin:0 auto; text-align:left;
+}
+.school-logo{
+  width:54px; height:54px; border-radius:50%;
+  object-fit:cover; background:#fff; flex:0 0 auto;
+  border:2px solid rgba(255,255,255,.6);
+  box-shadow:0 2px 8px rgba(0,0,0,.18);
+}
+.school-logo.logo-missing{ display:none; }
+.header-text{ min-width:0; }
+.header-text h1{font-size:16px; margin:0; font-weight:700; letter-spacing:.3px; line-height:1.25;}
+.header-text p{margin:3px 0 0; font-size:11px; opacity:.88;}
+@media(max-width:520px){
+  .school-logo{ width:44px; height:44px; }
+  .header-text h1{ font-size:13.5px; }
+  .header-text p{ font-size:10.5px; }
+}
+.tabs{
+  display:flex; gap:4px; background:#fff; padding:6px;
+  position:sticky; top:0; z-index:80;
+  box-shadow:0 1px 5px rgba(15,23,42,.10);
+  overflow-x:auto; scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{
+  flex:1 0 auto; min-width:84px; border:0; background:transparent;
+  padding:10px 8px; font-size:12.5px; font-weight:700; color:var(--muted);
+  border-radius:9px; cursor:pointer; white-space:nowrap; font-family:inherit;
+  transition:.15s;
+}
+.tabs button.active{background:var(--primary); color:#fff; box-shadow:0 2px 8px rgba(37,99,235,.35)}
+main{padding:12px; max-width:1600px; margin:0 auto}
+.tab-panel{display:none}
+.tab-panel.active{display:block; animation:fade .18s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.card{
+  background:var(--card); border-radius:14px; padding:14px;
+  margin-bottom:12px; box-shadow:0 1px 3px rgba(15,23,42,.07);
+}
+.card h2{font-size:14.5px;margin:0 0 10px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.card h2 small{font-weight:500;color:var(--muted);font-size:11.5px}
+.hint{font-size:12px;color:var(--muted);margin:-4px 0 10px;line-height:1.5}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
+.fld{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:var(--muted);flex:1;min-width:120px}
+select,input[type=text],input[type=number]{
+  font-family:inherit; font-size:14px; padding:9px 10px;
+  border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:var(--text);
+  width:100%; outline:none; transition:.15s; min-width:0;
+}
+select:focus,input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.13)}
+.btn{
+  border:0;border-radius:9px;padding:10px 16px;font-size:13.5px;font-weight:700;
+  cursor:pointer;font-family:inherit;background:#e2e8f0;color:var(--text);transition:.15s;
+  white-space:nowrap;
+}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--primary);color:#fff}
+.btn.primary:hover{background:var(--primary-d)}
+.btn.danger{background:var(--danger);color:#fff}
+.btn.ghost{background:#eef2ff;color:var(--primary)}
+.btn.sm{padding:7px 12px;font-size:12.5px}
+.btn.success{background:#16a34a;color:#fff}
+.btn.success:hover{background:#15803d}
+
+.add-row{display:grid;grid-template-columns:1fr;gap:8px}
+@media(min-width:620px){
+  .add-row{grid-template-columns:2fr 1fr auto}
+  .add-row.three{grid-template-columns:1fr 1fr 1fr}
+}
+
+.export-bar{
+  display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;
+  padding:10px 12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:11px;
+  align-items:center;
+}
+.export-bar .lbl{
+  font-size:11.5px; font-weight:800; color:#15803d; margin-right:auto;
+  letter-spacing:.3px;
+}
+@media(max-width:520px){
+  .export-bar .lbl{ width:100%; margin-bottom:4px; }
+}
+
+.filter-bar{
+  display:grid; grid-template-columns:1fr; gap:8px;
+  padding:10px 12px; margin-bottom:12px;
+  background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(15,23,42,.07);
+}
+@media(min-width:620px){
+  .filter-bar.two{grid-template-columns:2fr 1fr}
+  .filter-bar.three{grid-template-columns:2fr 1fr 1fr}
+}
+.filter-bar input,.filter-bar select{padding:8px 10px;font-size:13px}
+.filter-info{font-size:11.5px;color:var(--muted);font-weight:600;padding:0 4px;margin-top:-4px}
+
+.view-opts{
+  background:#f8fafc; border:1px solid var(--border); border-radius:11px;
+  padding:10px 12px; margin-bottom:12px;
+}
+.view-opts-head{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:8px; margin-bottom:8px;
+}
+.view-opts-head span{font-size:12px; font-weight:800; color:#334155}
+.view-grid{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+  gap:6px 10px;
+}
+.vchk{
+  display:flex; align-items:center; gap:6px;
+  font-size:12px; font-weight:600; color:var(--text);
+  cursor:pointer; user-select:none;
+  padding:4px 6px; border-radius:7px; transition:.12s;
+}
+.vchk:hover{background:#eef2ff}
+.vchk input{
+  width:15px;height:15px;margin:0;cursor:pointer;
+  accent-color:var(--primary); flex:0 0 auto;
+}
+.vchk.vchk-hl{background:#e0e7ff; color:#3730a3; font-weight:800}
+.vchk.vchk-hl:hover{background:#c7d2fe}
+
+.stu-list{display:flex;flex-direction:column;gap:8px}
+.stu-item{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;
+  border:1px solid var(--border);border-radius:11px;background:#fbfdff;
+  transition:.15s;
+}
+.stu-item.editing{
+  display:grid; grid-template-columns:1fr; gap:8px;
+  background:#eff6ff; border-color:#93c5fd;
+}
+.stu-info{flex:1;min-width:0}
+.stu-name{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{
+  display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;
+  border-radius:20px;margin-top:3px;letter-spacing:.3px;
+}
+.badge.tamil{background:#dcfce7;color:#15803d}
+.badge.hindi{background:#fef3c7;color:#b45309}
+.empty{padding:26px 12px;text-align:center;color:var(--muted);font-size:13px}
+.count-badge{
+  background:#eef2ff;color:var(--primary);font-weight:800;font-size:12px;
+  padding:8px 14px;border-radius:9px;white-space:nowrap;
+}
+.edit-actions{display:flex;gap:8px}
+.edit-actions .btn{flex:1}
+
+.table-wrap{
+  overflow:auto;-webkit-overflow-scrolling:touch;
+  border-radius:11px;border:1px solid var(--border);background:#fff;
+  position:relative;
+}
+.table-wrap.tall{max-height:74vh}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;white-space:nowrap}
+th,td{padding:8px 9px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:center}
+th:last-child,td:last-child{border-right:0}
+tbody tr:last-child td{border-bottom:0}
+thead th{
+  background:#f1f5f9;font-weight:800;font-size:11.5px;color:#334155;
+  letter-spacing:.2px;
+}
+
+.sticky-col{
+  position:sticky; left:0; z-index:4; background:#fff;
+  width:var(--sticky-w1); min-width:var(--sticky-w1); max-width:var(--sticky-w1);
+  padding:6px 2px; font-size:11.5px; color:var(--muted);
+}
+.sticky-col2{
+  position:sticky; left:var(--sticky-w1); z-index:4; background:#fff;
+  min-width:var(--sticky-w2); max-width:var(--sticky-w2); text-align:left;
+  padding-left:10px;
+  box-shadow:2px 0 4px -2px rgba(15,23,42,.18);
+}
+thead .sticky-col,thead .sticky-col2{z-index:12;background:#f1f5f9}
+.sname{font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.smed{font-size:10px;font-weight:700;margin-top:2px}
+.smed.tamil{color:#15803d}
+.smed.hindi{color:#b45309}
+
+.mcell{padding:5px 5px 6px;min-width:124px;background:#fff;transition:.15s}
+.mcell .ab-chk{
+  display:flex;align-items:center;justify-content:center;gap:3px;
+  font-size:10px;font-weight:800;color:var(--absent-d);
+  margin-bottom:3px;cursor:pointer;user-select:none;
+  letter-spacing:.4px;
+}
+.mcell .ab-chk input{
+  width:13px;height:13px;margin:0;accent-color:var(--absent);
+  cursor:pointer;flex:0 0 auto;
+}
+.mcell .inp-row{display:flex;gap:4px}
+.mcell input[type=text]{
+  flex:1;min-width:0;width:100%;padding:6px 2px;text-align:center;
+  font-size:13px;border-radius:7px;font-weight:600;
+}
+.mcell input[type=text]:disabled{
+  opacity:.4; cursor:not-allowed; background:#f1f5f9;
+}
+.mcell .tot{font-size:12px;font-weight:800;color:#475569;margin-top:3px;text-align:center}
+.mcell .gr{font-size:10.5px;font-weight:800;color:var(--primary);margin-top:1px;text-align:center;min-height:13px}
+.mcell.fail{background:var(--danger-bg)}
+.mcell.fail input[type=text]{border-color:#fca5a5;background:#fff5f5}
+.mcell.fail .tot{color:#b91c1c}
+.mcell.absent{background:var(--absent-bg);border-left:2px solid var(--absent);border-right:2px solid var(--absent)}
+.mcell.absent .tot{color:var(--absent-d);font-size:13px}
+.mcell.absent .gr{color:var(--absent-d)}
+
+@keyframes shakeX{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-3px)}
+  75%{transform:translateX(3px)}
+}
+.mcell input[type=text].exceed{
+  animation:shakeX .3s;
+  border-color:#dc2626!important;
+  background:#fee2e2!important;
+}
+
+#rs-table th, #rs-table td{
+  padding:5px 4px; font-size:11.5px; min-width:36px;
+}
+#rs-table thead tr:first-child th{
+  position:sticky; top:0; z-index:8; background:#e2e8f0;
+  height:30px; padding:4px; font-size:10.5px;
+}
+#rs-table thead tr:nth-child(2) th{
+  position:sticky; top:30px; z-index:8; background:#eef2f7;
+  height:26px; padding:3px; font-size:10px; color:#475569;
+}
+#rs-table thead th.sticky-col{left:0; z-index:14}
+#rs-table thead th.sticky-col2{left:var(--sticky-w1); z-index:14}
+#rs-table thead th.grp{background:#dbeafe;color:#1e40af;font-weight:800}
+#rs-table thead th.hl{background:#c7d2fe;color:#3730a3;font-weight:800;font-size:10.5px}
+#rs-table thead th.hl-theo{background:#fed7aa;color:#9a3412}
+#rs-table thead th.hl-int{background:#bfdbfe;color:#1e40af}
+
+#rs-table tbody td.sticky-col{background:#fff}
+#rs-table tbody td.sticky-col2{background:#fff}
+
+#rs-table td.dth,#rs-table td.din,#rs-table td.dtot,#rs-table td.dgr{
+  min-width:36px; font-weight:700;
+}
+#rs-table td.din{color:#475569}
+#rs-table td.dtot{color:#1e293b; background:#f8fafc}
+#rs-table td.dgr{color:var(--primary); font-size:10.5px}
+#rs-table td.fail{background:var(--danger-bg)!important; color:#b91c1c!important}
+#rs-table td.absent{background:var(--absent-bg)!important; color:var(--absent-d)!important; font-weight:800}
+
+#rs-table td.theo-total{background:#fff7ed;font-weight:800;color:#9a3412;font-size:12.5px}
+#rs-table td.int-total{background:#eff6ff;font-weight:800;color:#1e40af;font-size:12.5px}
+#rs-table td.total-cell{background:#e0e7ff;font-weight:800;color:#1e40af;font-size:13px}
+#rs-table td.grade-cell{font-weight:800;font-size:13px;background:#f0fdf4;color:#15803d}
+#rs-table td.rank-cell{font-weight:800;background:#fffbeb;color:#b45309;font-size:13px}
+#rs-table td.rank-cell.na{background:#f8fafc;color:#94a3b8;font-weight:600}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:10px}
+.legend span{display:flex;align-items:center;gap:5px}
+.dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+.dot.red{background:#fecaca;border:1px solid #fca5a5}
+.dot.amber{background:#fde68a;border:1px solid #f59e0b}
+.dot.green{background:#bbf7d0;border:1px solid #86efac}
+
+.seg{display:flex;gap:6px;background:#f1f5f9;padding:4px;border-radius:11px;margin-bottom:14px}
+.seg button{
+  flex:1;border:0;background:transparent;padding:9px;font-size:13px;font-weight:700;
+  color:var(--muted);border-radius:8px;cursor:pointer;font-family:inherit;transition:.15s;
+}
+.seg button.active{background:#fff;color:var(--primary);box-shadow:0 1px 4px rgba(15,23,42,.12)}
+
+.grade-row{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto;gap:6px;align-items:center;margin-bottom:8px}
+.grade-row .sep{color:#94a3b8;font-size:12px;font-weight:700}
+.grade-row input{padding:8px 4px;text-align:center;font-weight:600}
+.rm-btn{
+  background:var(--danger-bg);color:var(--danger);border:0;border-radius:8px;
+  width:34px;height:34px;font-size:14px;cursor:pointer;font-weight:800;font-family:inherit;
+}
+.rm-btn:active{transform:scale(.94)}
+.msg{font-size:12.5px;margin-top:8px;padding:9px 12px;border-radius:9px;display:none;font-weight:600}
+.msg.show{display:block}
+.msg.ok{background:var(--success-bg);color:#15803d}
+.msg.err{background:var(--danger-bg);color:#b91c1c}
+
+.warn-box{
+  background:#fffbeb;border:1px solid #fde68a;color:#92400e;
+  font-size:12px;padding:10px 12px;border-radius:10px;margin-bottom:10px;line-height:1.5;
+}
+.footer-note{text-align:center;font-size:11px;color:#94a3b8;padding:6px 12px 20px}
+
+.logo-preview-wrap{
+  display:flex; align-items:center; gap:12px;
+  padding:10px; margin-top:10px;
+  background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px;
+}
+.logo-preview-wrap img{
+  width:64px; height:64px; border-radius:50%; object-fit:cover;
+  background:#fff; border:2px solid #e2e8f0; flex:0 0 auto;
+}
+.logo-preview-wrap .logo-info{
+  font-size:12px; color:var(--muted); line-height:1.5;
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-inner">
+    <img src="sjik.jpg" alt="School Logo" class="school-logo" id="school-logo" onerror="this.classList.add('logo-missing')">
+    <div class="header-text">
+      <h1>ST. JOSEPH'S INTERNATIONAL (CBSE) SCHOOL</h1>
+      <p>Krishnagiri &nbsp;•&nbsp; Students Mark Register</p>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="students" class="active">👥 Students</button>
+  <button data-tab="marks">✍️ Marks Entry</button>
+  <button data-tab="results">🏆 Results</button>
+  <button data-tab="settings">⚙️ Settings</button>
+</nav>
+
+<main>
+
+  <section id="tab-students" class="tab-panel active">
+    <div class="toolbar">
+      <label class="fld">Grade
+        <select class="grade-select"></select>
+      </label>
+      <div class="count-badge"><span id="stu-count">0</span> Students</div>
+    </div>
+
+    <div class="card">
+      <h2>➕ Add Student</h2>
+      <div class="add-row">
+        <input type="text" id="stu-name" placeholder="Student name" autocomplete="off">
+        <select id="stu-medium">
+          <option value="tamil">Tamil Medium</option>
+          <option value="hindi">Hindi Medium</option>
+        </select>
+        <button class="btn primary" id="stu-add">Add</button>
+      </div>
+      <div class="msg" id="stu-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>📥 Bulk Import <small>(Excel / CSV)</small></h2>
+      <p class="hint">
+        Column A = Student Name, Column B = Medium (Tamil / Hindi).<br>
+        A leading S.No number column is detected and ignored automatically.
+      </p>
+      <div class="add-row">
+        <input type="file" id="stu-file" accept=".xlsx,.xls,.csv" style="padding:7px">
+        <button class="btn ghost" id="stu-template">Download Template</button>
+      </div>
+      <div class="msg" id="import-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>📋 Student List</h2>
+      <div class="stu-list" id="stu-list"></div>
+    </div>
+  </section>
+
+  <section id="tab-marks" class="tab-panel">
+    <div class="toolbar">
+      <label class="fld">Grade
+        <select class="grade-select"></select>
+      </label>
+      <label class="fld">Exam
+        <select class="exam-select"></select>
+      </label>
+    </div>
+
+    <div class="filter-bar two">
+      <input type="text" class="filter-name" placeholder="🔍 Search student name...">
+      <select class="filter-medium">
+        <option value="all">All Mediums</option>
+        <option value="tamil">Tamil Medium</option>
+        <option value="hindi">Hindi Medium</option>
+      </select>
+    </div>
+    <div class="filter-info" id="mk-count"></div>
+
+    <div class="card">
+      <h2>✍️ Marks Entry <small id="mk-info"></small></h2>
+      <div class="warn-box" id="mk-warn"></div>
+      <div class="table-wrap tall"><table id="mk-table"></table></div>
+      <div class="legend">
+        <span><i class="dot red"></i> Theory below pass mark (Fail)</span>
+        <span><i class="dot amber"></i> Absent (AB) — inputs locked, 0 marks</span>
+        <span><b>T</b> Theory &nbsp;•&nbsp; <b>I</b> Internal &nbsp;•&nbsp; <b>Tot</b> Total &nbsp;•&nbsp; <b>Gr</b> Grade</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-results" class="tab-panel">
+    <div class="toolbar">
+      <label class="fld">Grade
+        <select class="grade-select"></select>
+      </label>
+      <label class="fld">Exam
+        <select class="exam-select"></select>
+      </label>
+    </div>
+
+    <div class="filter-bar three">
+      <input type="text" class="filter-name" placeholder="🔍 Search student name...">
+      <select class="filter-medium">
+        <option value="all">All Mediums</option>
+        <option value="tamil">Tamil Medium</option>
+        <option value="hindi">Hindi Medium</option>
+      </select>
+      <select class="filter-status">
+        <option value="all">All Results</option>
+        <option value="pass">Rank Eligible</option>
+        <option value="fail">Not Eligible (Fail/AB in core)</option>
+      </select>
+    </div>
+    <div class="filter-info" id="rs-count"></div>
+
+    <div class="card">
+      <h2>🏆 Overall Result <small id="rs-info"></small></h2>
+      <div class="warn-box" id="rs-rule"></div>
+
+      <div class="export-bar">
+        <span class="lbl">⬇️ Export Result (respects filters + visible columns)</span>
+        <button class="btn success sm" id="exp-excel">📊 Excel</button>
+        <button class="btn success sm" id="exp-pdf">📄 PDF</button>
+      </div>
+
+      <div class="view-opts">
+        <div class="view-opts-head">
+          <span>👁️ Show / Hide Columns <small style="font-weight:500;color:#64748b">— applies to view &amp; export</small></span>
+          <button class="btn ghost sm" id="view-all">Show All</button>
+        </div>
+        <div class="view-grid" id="view-grid"></div>
+      </div>
+
+      <div class="table-wrap tall"><table id="rs-table"></table></div>
+      <div class="legend">
+        <span><i class="dot red"></i> Failed (theory &lt; pass mark)</span>
+        <span><i class="dot amber"></i> Absent (AB)</span>
+        <span><i class="dot green"></i> Rank eligible</span>
+        <span>Scroll horizontally to see all subjects →</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Subject Statistics <small id="rs-stats-info"></small></h2>
+      <div class="table-wrap"><table id="rs-stats"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-settings" class="tab-panel">
+
+    <div class="card">
+      <h2>🖼️ School Logo</h2>
+      <p class="hint">
+        Upload a logo (JPG / PNG, square recommended). It appears in the header and inside exported PDF reports.
+        Stored safely in this browser — refresh safe.
+      </p>
+      <div class="add-row">
+        <input type="file" id="logo-file" accept="image/*" style="padding:7px">
+        <button class="btn ghost" id="logo-reset">Reset to Default (sjik.jpg)</button>
+      </div>
+      <div class="logo-preview-wrap" id="logo-preview-wrap"></div>
+      <div class="msg" id="logo-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>⚙️ Exam Settings</h2>
+      <div class="seg" id="set-examtype">
+        <button data-t="pa" class="active">PA Exam</button>
+        <button data-t="term">Term Exam</button>
+      </div>
+      <div class="add-row three">
+        <label class="fld">Theory Max
+          <input type="number" id="set-theory" min="0">
+        </label>
+        <label class="fld">Internal Max
+          <input type="number" id="set-internal" min="0">
+        </label>
+        <label class="fld">Pass Mark (Theory)
+          <input type="number" id="set-pass" min="0">
+        </label>
+      </div>
+      <div class="warn-box" style="margin-top:12px;margin-bottom:0">
+        <b>Pass mark is compared ONLY with the Theory mark</b> — not with Theory + Internal.
+        Example: pass mark 15 → theory 14.9 = FAIL, theory 17 = PASS.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🎯 Subject &amp; Overall Grade <small>(based on subject total marks &amp; overall average)</small></h2>
+      <div class="warn-box" style="margin-top:0">
+        <b>Overall Grade formula:</b> (Grand Total ÷ 5) rounded → matched against the same grade bands below.
+        Example PA: 250 → 250/5 = <b>50 → A1</b>. &nbsp; 189 → 189/5 = 37.8 → <b>38 → B1</b>. &nbsp;
+        186 → 186/5 = 37.2 → <b>37 → B1</b>.
+        <br>(Rounding rule: decimal ≥ 0.5 rounds up, otherwise rounds down.)
+      </div>
+      <div id="set-subj-grades"></div>
+      <button class="btn ghost sm" id="add-subj-grade" style="margin-top:6px">+ Add Row</button>
+    </div>
+
+    <div class="card">
+      <h2>💾 Data</h2>
+      <p class="hint">All data is stored inside this browser (localStorage). It will NOT be erased on refresh.</p>
+      <div class="add-row">
+        <button class="btn ghost" id="data-backup">Backup (JSON)</button>
+        <button class="btn ghost" id="data-restore-btn">Restore (JSON)</button>
+        <input type="file" id="data-restore" accept=".json" style="display:none">
+        <button class="btn danger" id="data-clear">Clear All Data</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="footer-note">Students Mark Register • Grade 1 – 10 • PA &amp; Term Examinations</div>
+
+<script>
+/* =========================================================
+   CONSTANTS
+   ========================================================= */
+const STORE_KEY = 'smr_v6';
+const LOGO_KEY  = 'smr_logo_v1';
+
+const SUBJECTS = [
+  {key:'tamil',    name:'Tamil'},
+  {key:'english',  name:'English'},
+  {key:'math',     name:'Math'},
+  {key:'science',  name:'Science'},
+  {key:'social',   name:'Social'},
+  {key:'computer', name:'Computer'},
+  {key:'hindi',    name:'Hindi'},
+  {key:'gk',       name:'GK'}
+];
+
+const CORE = {
+  tamil: ['tamil','english','math','science','social'],
+  hindi: ['hindi','english','math','science','social']
+};
+
+const EXAMS = [
+  {key:'pa1',   name:'PA I',   type:'pa'},
+  {key:'pa2',   name:'PA II',  type:'pa'},
+  {key:'term1', name:'Term I', type:'term'},
+  {key:'term2', name:'Term II',type:'term'}
+];
+
+const SCHOOL_NAME = "ST. JOSEPH'S INTERNATIONAL (CBSE) SCHOOL - KRISHNAGIRI";
+
+/* =========================================================
+   DEFAULTS
+   ========================================================= */
+function defaultSettings(){
+  return {
+    pa: {
+      theoryMax: 40,
+      internalMax: 10,
+      passMark: 15,
+      subjectGrades: [
+        {min:41, max:50,  grade:'A1'},
+        {min:36, max:40,  grade:'A2'},
+        {min:31, max:35,  grade:'B1'},
+        {min:26, max:30,  grade:'B2'},
+        {min:21, max:25,  grade:'C1'},
+        {min:16, max:20,  grade:'C2'},
+        {min:11, max:15,  grade:'D'},
+        {min:0,  max:10,  grade:'E'}
+      ]
+    },
+    term: {
+      theoryMax: 80,
+      internalMax: 20,
+      passMark: 26,
+      subjectGrades: [
+        {min:81, max:100, grade:'A1'},
+        {min:71, max:80,  grade:'A2'},
+        {min:61, max:70,  grade:'B1'},
+        {min:51, max:60,  grade:'B2'},
+        {min:41, max:50,  grade:'C1'},
+        {min:31, max:40,  grade:'C2'},
+        {min:21, max:30,  grade:'D'},
+        {min:0,  max:20,  grade:'E'}
+      ]
+    }
+  };
+}
+
+function defaultDB(){
+  return { v:6, settings: defaultSettings(), students:{}, marks:{} };
+}
+
+/* =========================================================
+   STORAGE
+   ========================================================= */
+let DB = defaultDB();
+let saveTimer = null;
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return defaultDB();
+    const d = JSON.parse(raw);
+    const base = defaultDB();
+    return {
+      v: 6,
+      settings: {
+        pa:   Object.assign({}, base.settings.pa,   (d.settings||{}).pa   || {}),
+        term: Object.assign({}, base.settings.term, (d.settings||{}).term || {})
+      },
+      students: d.students || {},
+      marks:    d.marks    || {}
+    };
+  }catch(e){
+    console.error('Load failed', e);
+    return defaultDB();
+  }
+}
+
+function saveNow(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(DB)); }
+  catch(e){ console.error('Save failed', e); }
+}
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, 120);
+}
+window.addEventListener('beforeunload', ()=>{ clearTimeout(saveTimer); saveNow(); });
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden){ clearTimeout(saveTimer); saveNow(); } });
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+const $  = (s, r=document)=>r.querySelector(s);
+const $$ = (s, r=document)=>[...r.querySelectorAll(s)];
+
+function uid(){ return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function num(v){
+  if(v===null || v===undefined || v==='') return null;
+  const n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function examType(exam){ return exam.startsWith('pa') ? 'pa' : 'term'; }
+function cfgFor(exam){ return DB.settings[examType(exam)]; }
+function examName(exam){ const e = EXAMS.find(x=>x.key===exam); return e ? e.name : exam; }
+function subjMax(cfg){ return (cfg.theoryMax||0) + (cfg.internalMax||0); }
+
+function gradeFor(value, scale){
+  if(value===null || value===undefined || !scale || !scale.length) return '';
+  const s = [...scale].sort((a,b)=>(b.min||0)-(a.min||0));
+  for(const r of s){
+    const lo = (r.min==null?0:r.min), hi = (r.max==null?0:r.max);
+    if(value >= lo && value <= hi) return r.grade || '';
+  }
+  return '';
+}
+
+/* NEW: overall grade based on average of 5 core subjects */
+function overallGradeFromTotal(grandTotal, cfg){
+  if(grandTotal === null || grandTotal === undefined) return '';
+  const avg = grandTotal / 5;
+  const rounded = Math.round(avg);   /* 0.5 and above rounds up */
+  return gradeFor(rounded, cfg.subjectGrades);
+}
+
+/* =========================================================
+   DATA ACCESS
+   ========================================================= */
+function getStudents(grade){
+  if(!DB.students[grade]) DB.students[grade] = [];
+  return DB.students[grade];
+}
+function getMark(grade, exam, sid, subj){
+  const m = DB.marks?.[grade]?.[exam]?.[sid]?.[subj];
+  if(!m) return {theory:'', internal:'', absent:false};
+  return {
+    theory:  (m.theory===null||m.theory===undefined)?'':m.theory,
+    internal:(m.internal===null||m.internal===undefined)?'':m.internal,
+    absent:  !!m.absent
+  };
+}
+function setMark(grade, exam, sid, subj, field, value){
+  DB.marks[grade] = DB.marks[grade] || {};
+  DB.marks[grade][exam] = DB.marks[grade][exam] || {};
+  DB.marks[grade][exam][sid] = DB.marks[grade][exam][sid] || {};
+  DB.marks[grade][exam][sid][subj] = DB.marks[grade][exam][sid][subj] || {theory:'', internal:'', absent:false};
+  DB.marks[grade][exam][sid][subj][field] = value;
+  save();
+}
+function setAbsent(grade, exam, sid, subj, isAbsent){
+  DB.marks[grade] = DB.marks[grade] || {};
+  DB.marks[grade][exam] = DB.marks[grade][exam] || {};
+  DB.marks[grade][exam][sid] = DB.marks[grade][exam][sid] || {};
+  const cell = DB.marks[grade][exam][sid][subj] = DB.marks[grade][exam][sid][subj] || {theory:'', internal:'', absent:false};
+  cell.absent = !!isAbsent;
+  if(isAbsent){
+    cell.theory = '';
+    cell.internal = '';
+  }
+  save();
+}
+
+/* =========================================================
+   STATE
+   ========================================================= */
+function defaultView(){
+  const v = {};
+  SUBJECTS.forEach(s=>{ v[s.key] = true; });
+  v.theoryTotal   = true;
+  v.internalTotal = true;
+  v.grandTotal    = true;
+  v.grade         = true;
+  v.rank          = true;
+  return v;
+}
+
+const state = {
+  grade:'1',
+  exam:'pa1',
+  settingType:'pa',
+  filter: { name:'', medium:'all', status:'all' },
+  editingStudentId: null,
+  lastResultRows: [],
+  view: defaultView()
+};
+
+/* =========================================================
+   LOGO HANDLING
+   ========================================================= */
+function applyLogo(){
+  const saved = localStorage.getItem(LOGO_KEY);
+  const img = $('#school-logo');
+  if(!img) return;
+  if(saved){
+    img.src = saved;
+    img.classList.remove('logo-missing');
+  } else {
+    img.src = 'sjik.jpg';
+  }
+}
+
+function renderLogoPreview(){
+  const wrap = $('#logo-preview-wrap');
+  if(!wrap) return;
+  const saved = localStorage.getItem(LOGO_KEY);
+  const src = saved || 'sjik.jpg';
+  wrap.innerHTML = `
+    <img src="${src}" alt="Logo preview" onerror="this.style.visibility='hidden'">
+    <div class="logo-info">
+      ${saved
+        ? '<b>Custom logo</b> is active. Used in header and PDF exports.'
+        : '<b>Default logo (sjik.jpg)</b> — place <code>sjik.jpg</code> next to this HTML file, or upload a custom logo above.'}
+    </div>
+  `;
+}
+
+function handleLogoUpload(file){
+  if(!file) return;
+  if(!/^image\//.test(file.type)){
+    showMsg('#logo-msg','Please choose an image file.', 'error');
+    return;
+  }
+  if(file.size > 900 * 1024){
+    showMsg('#logo-msg','Image is too large (max ~900 KB). Please use a smaller logo.', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      localStorage.setItem(LOGO_KEY, reader.result);
+      applyLogo();
+      renderLogoPreview();
+      showMsg('#logo-msg','Logo updated successfully.', 'ok');
+    }catch(e){
+      showMsg('#logo-msg','Could not save logo (storage full). Try a smaller image.', 'error');
+    }
+  };
+  reader.onerror = ()=>showMsg('#logo-msg','Failed to read the image.', 'error');
+  reader.readAsDataURL(file);
+}
+
+function resetLogo(){
+  if(!confirm('Reset logo to default (sjik.jpg)?')) return;
+  localStorage.removeItem(LOGO_KEY);
+  applyLogo();
+  renderLogoPreview();
+  showMsg('#logo-msg','Logo reset to default.', 'ok');
+}
+
+/* =========================================================
+   FILTERS
+   ========================================================= */
+function matchData(d){
+  const f = state.filter;
+  const q = f.name.trim().toLowerCase();
+  if(q && !(d.name||'').includes(q)) return false;
+  if(f.medium !== 'all' && d.medium !== f.medium) return false;
+  if(f.status !== 'all' && d.status && f.status !== d.status) return false;
+  return true;
+}
+
+function applyFilters(){
+  let mkVisible = 0, mkTotal = 0;
+  const mkT = $('#mk-table');
+  if(mkT && mkT.tBodies[0]){
+    [...mkT.tBodies[0].rows].forEach(tr=>{
+      if(!tr.dataset.name) return;
+      mkTotal++;
+      const show = matchData({name: tr.dataset.name, medium: tr.dataset.medium});
+      tr.style.display = show ? '' : 'none';
+      if(show) mkVisible++;
+    });
+  }
+
+  let rsVisible = 0, rsTotal = 0;
+  const rsT = $('#rs-table');
+  if(rsT && rsT.tBodies[0]){
+    [...rsT.tBodies[0].rows].forEach(tr=>{
+      if(!tr.dataset.name) return;
+      rsTotal++;
+      const show = matchData({
+        name: tr.dataset.name,
+        medium: tr.dataset.medium,
+        status: tr.dataset.status
+      });
+      tr.style.display = show ? '' : 'none';
+      if(show) rsVisible++;
+    });
+  }
+
+  if($('#mk-count')){
+    $('#mk-count').textContent = mkTotal ? `Showing ${mkVisible} of ${mkTotal} students` : '';
+  }
+  if($('#rs-count')){
+    $('#rs-count').textContent = rsTotal ? `Showing ${rsVisible} of ${rsTotal} students` : '';
+  }
+  if($('#rs-stats-info')){
+    $('#rs-stats-info').textContent = rsTotal ? `(${rsVisible} of ${rsTotal} students)` : '';
+  }
+
+  if(state.lastResultRows.length){
+    renderStats(getFilteredRows());
+  }
+}
+
+function syncFilterUI(){
+  $$('.filter-name').forEach(i=>{ if(i.value !== state.filter.name) i.value = state.filter.name; });
+  $$('.filter-medium').forEach(i=>{ if(i.value !== state.filter.medium) i.value = state.filter.medium; });
+  $$('.filter-status').forEach(i=>{ if(i.value !== state.filter.status) i.value = state.filter.status; });
+}
+
+function getFilteredRows(){
+  return state.lastResultRows.filter(r=>matchData({
+    name: r.student.name.toLowerCase(),
+    medium: r.student.medium,
+    status: r.eligible ? 'pass' : 'fail'
+  }));
+}
+
+/* =========================================================
+   VIEW OPTIONS
+   ========================================================= */
+function renderViewOptions(){
+  const grid = $('#view-grid');
+  if(!grid) return;
+  const items = [];
+  SUBJECTS.forEach(s=> items.push({ key:s.key, label:s.name, cls:'' }));
+  items.push({ key:'theoryTotal',   label:'Theory Total',   cls:'vchk-hl' });
+  items.push({ key:'internalTotal', label:'Internal Total', cls:'vchk-hl' });
+  items.push({ key:'grandTotal',    label:'Grand Total',    cls:'vchk-hl' });
+  items.push({ key:'grade',         label:'Overall Grade',  cls:'vchk-hl' });
+  items.push({ key:'rank',          label:'Rank',           cls:'vchk-hl' });
+
+  grid.innerHTML = items.map(it=>`
+    <label class="vchk ${it.cls}">
+      <input type="checkbox" class="vcol" data-col="${it.key}" ${state.view[it.key]?'checked':''}>
+      <span>${it.label}</span>
+    </label>
+  `).join('');
+}
+
+function applyViewOptions(){
+  const v = state.view;
+  const t = $('#rs-table');
+  if(!t) return;
+
+  SUBJECTS.forEach(s=>{
+    const el = t.querySelector(`[data-col="grp-${s.key}"]`);
+    if(el) el.style.display = v[s.key] ? '' : 'none';
+  });
+
+  const map = {
+    theoryTotal:   v.theoryTotal,
+    internalTotal: v.internalTotal,
+    grandTotal:    v.grandTotal,
+    grade:         v.grade,
+    rank:          v.rank
+  };
+  SUBJECTS.forEach(s=>{ map[s.key] = v[s.key]; });
+
+  t.querySelectorAll('[data-col]').forEach(el=>{
+    const c = el.getAttribute('data-col');
+    if(!c) return;
+    if(c.startsWith('grp-')) return;
+    if(c === 'sno' || c === 'name') return;
+    const show = map[c] !== false;
+    el.style.display = show ? '' : 'none';
+  });
+}
+
+/* =========================================================
+   COMPUTATION
+   ========================================================= */
+function computeRows(){
+  const grade = state.grade, exam = state.exam;
+  const cfg = cfgFor(exam);
+  const smax = subjMax(cfg);
+  const students = getStudents(grade);
+
+  const rows = students.map(st=>{
+    const r = {
+      student: st, subjects:{}, grand:0, pct:0, grade:'',
+      theoryTotal:0, internalTotal:0,
+      eligible:true, anyFail:false, entered:false, rank:null
+    };
+    for(const s of SUBJECTS){
+      const m = getMark(grade, exam, st.id, s.key);
+      const isAbsent = m.absent === true;
+      let th, inn, total, fail;
+      if(isAbsent){
+        th = 0; inn = 0; total = 0; fail = true;
+      } else {
+        th = num(m.theory); inn = num(m.internal);
+        total = (th===null && inn===null) ? null : ((th||0)+(inn||0));
+        fail = (th!==null && th < cfg.passMark);
+      }
+      r.subjects[s.key] = {th, inn, total, fail, absent:isAbsent};
+      if(isAbsent || th!==null || inn!==null) r.entered = true;
+      if(fail) r.anyFail = true;
+    }
+    const core = CORE[st.medium] || CORE.tamil;
+    r.core = core;
+    for(const k of core){
+      const sd = r.subjects[k];
+      if(!sd || sd.th===null || sd.fail) r.eligible = false;
+      r.grand += (sd?.total || 0);
+      r.theoryTotal   += (sd?.th  || 0);
+      r.internalTotal += (sd?.inn || 0);
+    }
+    const full = smax * 5;
+    r.pct = full ? (r.grand / full) * 100 : 0;
+
+    /* NEW: Overall grade from (Grand Total / 5) rounded against subject grade bands */
+    r.grade = overallGradeFromTotal(r.grand, cfg);
+
+    return r;
+  });
+
+  const elig = rows.filter(r=>r.eligible).sort((a,b)=>b.grand - a.grand);
+  let prevGrand = null;
+  let rankCounter = 0;
+  elig.forEach(r=>{
+    if(prevGrand === null || r.grand !== prevGrand){
+      rankCounter++;
+      prevGrand = r.grand;
+    }
+    r.rank = rankCounter;
+  });
+
+  return rows;
+}
+
+function computeStats(rows){
+  const cfg = cfgFor(state.exam);
+  const stat = {};
+  SUBJECTS.forEach(s=>{ stat[s.key] = {appeared:0, pass:0, fail:0, absent:0, total:0}; });
+
+  rows.forEach(r=>{
+    SUBJECTS.forEach(s=>{
+      const sd = r.subjects[s.key];
+      const d = stat[s.key];
+      const hasRecord = sd.absent || sd.th !== null;
+      if(!hasRecord) return;
+      d.total++;
+      if(sd.absent){ d.absent++; return; }
+      d.appeared++;
+      if(sd.th < cfg.passMark) d.fail++;
+      else d.pass++;
+    });
+  });
+
+  return stat;
+}
+
+/* =========================================================
+   RENDER : STUDENTS
+   ========================================================= */
+function renderStudents(){
+  const grade = state.grade;
+  const list = getStudents(grade);
+  $('#stu-count').textContent = list.length;
+
+  const box = $('#stu-list');
+  if(!list.length){
+    box.innerHTML = '<div class="empty">No students yet.<br>Add manually or import from Excel / CSV.</div>';
+    return;
+  }
+
+  box.innerHTML = list.map((s,i)=>{
+    const editing = state.editingStudentId === s.id;
+    if(editing){
+      return `
+        <div class="stu-item editing" data-edit-item="${s.id}">
+          <input type="text" class="edit-name" value="${esc(s.name)}" placeholder="Student name">
+          <div class="edit-actions">
+            <select class="edit-medium">
+              <option value="tamil" ${s.medium==='tamil'?'selected':''}>Tamil Medium</option>
+              <option value="hindi" ${s.medium==='hindi'?'selected':''}>Hindi Medium</option>
+            </select>
+            <button class="btn primary sm" data-save-edit="${s.id}">Save</button>
+            <button class="btn sm" data-cancel-edit="${s.id}">Cancel</button>
+          </div>
+        </div>`;
+    }
+    return `
+      <div class="stu-item">
+        <div class="stu-info">
+          <div class="stu-name">${i+1}. ${esc(s.name)}</div>
+          <span class="badge ${s.medium}">${s.medium==='hindi'?'Hindi Medium':'Tamil Medium'}</span>
+        </div>
+        <button class="btn ghost sm" data-edit="${s.id}">✏️ Edit</button>
+        <button class="btn danger sm" data-remove="${s.id}">Remove</button>
+      </div>`;
+  }).join('');
+}
+
+function showMsg(el, text, type){
+  const e = typeof el === 'string' ? $(el) : el;
+  if(!e) return;
+  e.textContent = text;
+  e.className = 'msg show ' + (type==='error' ? 'err' : 'ok');
+  clearTimeout(e._t);
+  e._t = setTimeout(()=>{ e.className = 'msg'; }, 4500);
+}
+
+function addStudent(){
+  const nameEl = $('#stu-name');
+  const name = nameEl.value.trim();
+  if(!name){ showMsg('#stu-msg','Please enter a student name.','error'); return; }
+  const medium = $('#stu-medium').value;
+  const list = getStudents(state.grade);
+  if(list.some(s=>s.name.trim().toLowerCase() === name.toLowerCase())){
+    showMsg('#stu-msg','This student already exists in this grade.','error');
+    return;
+  }
+  list.push({ id: uid(), name, medium });
+  save();
+  nameEl.value = '';
+  nameEl.focus();
+  showMsg('#stu-msg', `"${name}" added to Grade ${state.grade}.`, 'ok');
+  renderAll();
+}
+
+function removeStudent(id){
+  const grade = state.grade;
+  const list = getStudents(grade);
+  const i = list.findIndex(s=>s.id===id);
+  if(i<0) return;
+  const nm = list[i].name;
+  if(!confirm(`Remove "${nm}" from Grade ${grade}?\nAll marks of this student will also be removed.`)) return;
+  list.splice(i,1);
+  const g = DB.marks[grade];
+  if(g){
+    Object.keys(g).forEach(ex=>{ if(g[ex] && g[ex][id]) delete g[ex][id]; });
+  }
+  save();
+  renderAll();
+}
+
+function startEditStudent(id){
+  state.editingStudentId = id;
+  renderStudents();
+  const el = document.querySelector(`[data-edit-item="${id}"] .edit-name`);
+  if(el){ el.focus(); el.select(); }
+}
+function cancelEditStudent(){
+  state.editingStudentId = null;
+  renderStudents();
+}
+function saveEditStudent(id){
+  const item = document.querySelector(`[data-edit-item="${id}"]`);
+  if(!item) return;
+  const nameEl = item.querySelector('.edit-name');
+  const medEl = item.querySelector('.edit-medium');
+  const name = nameEl.value.trim();
+  const medium = medEl.value;
+  if(!name){ alert('Name cannot be empty'); nameEl.focus(); return; }
+  const list = getStudents(state.grade);
+  if(list.some(s=>s.id!==id && s.name.trim().toLowerCase()===name.toLowerCase())){
+    alert('Another student with this name already exists.');
+    return;
+  }
+  const st = list.find(s=>s.id===id);
+  if(!st) return;
+  st.name = name;
+  st.medium = medium;
+  save();
+  state.editingStudentId = null;
+  renderAll();
+}
+
+function parseCSV(text){
+  const rows=[]; let row=[], cell='', inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQ){
+      if(c === '"'){
+        if(text[i+1] === '"'){ cell+='"'; i++; }
+        else inQ = false;
+      } else cell += c;
+    } else {
+      if(c === '"') inQ = true;
+      else if(c === ','){ row.push(cell); cell=''; }
+      else if(c === '\n'){ row.push(cell); rows.push(row); row=[]; cell=''; }
+      else if(c === '\r'){ /* skip */ }
+      else cell += c;
+    }
+  }
+  if(cell !== '' || row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
+
+function importRows(rows){
+  const grade = state.grade;
+  const list = getStudents(grade);
+  const existing = new Set(list.map(s=>s.name.trim().toLowerCase()));
+  let added=0, skipped=0;
+
+  rows.forEach(raw=>{
+    const cells = (raw||[]).map(c=>String(c==null?'':c).trim());
+    while(cells.length && cells[0]==='') cells.shift();
+    if(!cells.length) return;
+    if(/^\d+$/.test(cells[0])) cells.shift();
+    while(cells.length && cells[0]==='') cells.shift();
+    if(!cells.length) return;
+
+    const nm = cells[0];
+    if(!nm) return;
+    if(/^(name|student|s\.?\s*no|sl\.?\s*no)/i.test(nm)) return;
+
+    let med = 'tamil';
+    const m = (cells[1]||'').toLowerCase();
+    if(m.startsWith('h')) med = 'hindi';
+    else if(m.startsWith('t')) med = 'tamil';
+
+    if(existing.has(nm.toLowerCase())){ skipped++; return; }
+    list.push({ id: uid(), name: nm, medium: med });
+    existing.add(nm.toLowerCase());
+    added++;
+  });
+
+  save();
+  renderAll();
+  const parts = [`${added} student(s) imported`];
+  if(skipped) parts.push(`${skipped} duplicate(s) skipped`);
+  showMsg('#import-msg', parts.join(' • ') + '.', added ? 'ok' : 'error');
+}
+
+async function handleFile(file){
+  if(!file) return;
+  const lower = file.name.toLowerCase();
+  try{
+    let rows = [];
+    if(lower.endsWith('.csv')){
+      const text = await file.text();
+      rows = parseCSV(text);
+    } else if(lower.endsWith('.xlsx') || lower.endsWith('.xls')){
+      if(typeof XLSX === 'undefined'){
+        showMsg('#import-msg','Excel library could not load. Please save your file as CSV.','error');
+        return;
+      }
+      const buf = await file.arrayBuffer();
+      const wb  = XLSX.read(buf, {type:'array'});
+      const ws  = wb.Sheets[wb.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(ws, {header:1, blankrows:false, defval:''});
+    } else {
+      showMsg('#import-msg','Unsupported file. Please use .xlsx, .xls or .csv','error');
+      return;
+    }
+    importRows(rows);
+  }catch(err){
+    console.error(err);
+    showMsg('#import-msg','Import failed: ' + err.message, 'error');
+  }
+}
+
+function downloadTemplate(){
+  const csv = 'S.No,Name,Medium\n1,Example Student,Tamil\n2,Sample Student,Hindi\n';
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'students-template.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+
+/* =========================================================
+   RENDER : MARKS ENTRY
+   ========================================================= */
+function renderMarks(){
+  const grade = state.grade, exam = state.exam;
+  const cfg = cfgFor(exam);
+  const students = getStudents(grade);
+
+  $('#mk-info').textContent = `— Grade ${grade} • ${examName(exam)}`;
+  $('#mk-warn').innerHTML =
+    `Theory max <b>${cfg.theoryMax}</b> + Internal max <b>${cfg.internalMax}</b> = Subject total <b>${subjMax(cfg)}</b>. ` +
+    `Pass mark is <b>${cfg.passMark}</b> and is compared with <b>THEORY only</b>. ` +
+    `Marks above the maximum are rejected. Tick <b>AB</b> to mark a subject absent (locks inputs, counts as 0).`;
+
+  const table = $('#mk-table');
+
+  if(!students.length){
+    table.innerHTML = '<tbody><tr><td class="empty">No students in Grade '+grade+'. Please add students first.</td></tr></tbody>';
+    applyFilters();
+    return;
+  }
+
+  let html = '<thead><tr><th class="sticky-col">#</th><th class="sticky-col2">Student</th>';
+  SUBJECTS.forEach(s=>{
+    html += `<th>${s.name}<div style="font-weight:600;font-size:9.5px;color:#94a3b8">T / I</div></th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  students.forEach((st,idx)=>{
+    html += `<tr data-sid="${st.id}" data-name="${esc(st.name.toLowerCase())}" data-medium="${st.medium}">`;
+    html += `<td class="sticky-col">${idx+1}</td>`;
+    html += `<td class="sticky-col2">
+        <div class="sname">${esc(st.name)}</div>
+        <div class="smed ${st.medium}">${st.medium==='hindi'?'Hindi':'Tamil'}</div>
+      </td>`;
+    SUBJECTS.forEach(s=>{
+      const m = getMark(grade, exam, st.id, s.key);
+      const isAbsent = m.absent;
+      const thVal = isAbsent ? '' : esc(m.theory);
+      const inVal = isAbsent ? '' : esc(m.internal);
+      const totTxt = isAbsent ? 'AB' : '–';
+      const grTxt  = isAbsent ? 'AB' : '';
+      html += `<td class="mcell ${isAbsent?'absent':''}" data-subj="${s.key}">
+          <label class="ab-chk" title="Mark absent">
+            <input type="checkbox" class="ab" ${isAbsent?'checked':''}>
+            <span>AB</span>
+          </label>
+          <div class="inp-row">
+            <input class="th" type="text" inputmode="decimal" placeholder="T" value="${thVal}" data-field="theory" autocomplete="off" maxlength="5" ${isAbsent?'disabled':''}>
+            <input class="in" type="text" inputmode="decimal" placeholder="I" value="${inVal}" data-field="internal" autocomplete="off" maxlength="5" ${isAbsent?'disabled':''}>
+          </div>
+          <div class="tot">${totTxt}</div>
+          <div class="gr">${grTxt}</div>
+        </td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+
+  table.innerHTML = html;
+  $$('tr[data-sid]', table).forEach(updateRowTotals);
+  applyFilters();
+}
+
+function updateRowTotals(tr){
+  const cfg = cfgFor(state.exam);
+  $$('.mcell', tr).forEach(td=>{
+    const abEl = $('.ab', td);
+    const thEl = $('.th', td), inEl = $('.in', td), totEl = $('.tot', td), grEl = $('.gr', td);
+    const isAbsent = abEl && abEl.checked;
+
+    td.classList.toggle('absent', isAbsent);
+    if(thEl) thEl.disabled = isAbsent;
+    if(inEl) inEl.disabled = isAbsent;
+
+    if(isAbsent){
+      totEl.textContent = 'AB';
+      grEl.textContent = 'AB';
+      td.classList.remove('fail');
+      return;
+    }
+
+    const th = num(thEl.value), inn = num(inEl.value);
+    if(th===null && inn===null){
+      totEl.textContent = '–';
+      grEl.textContent = '';
+    } else {
+      const total = (th||0) + (inn||0);
+      totEl.textContent = total;
+      const g = gradeFor(total, cfg.subjectGrades);
+      grEl.textContent = g || '';
+    }
+    const fail = (th!==null && th < cfg.passMark);
+    td.classList.toggle('fail', fail);
+  });
+}
+
+/* =========================================================
+   RENDER : RESULTS
+   ========================================================= */
+function renderResults(){
+  const grade = state.grade, exam = state.exam;
+  const cfg = cfgFor(exam);
+  const smax = subjMax(cfg);
+  const students = getStudents(grade);
+  const rows = computeRows();
+  state.lastResultRows = rows;
+
+  $('#rs-info').textContent = `— Grade ${grade} • ${examName(exam)}`;
+  $('#rs-rule').innerHTML =
+    `<b>Rank rule (Dense):</b> Same total marks get the same rank; next distinct value gets the next rank ` +
+    `(e.g. 250, 250, 210, 200, 250 → 1, 1, 2, 3, 1). ` +
+    `<b>Rank eligibility:</b> Tamil medium → <b>Tamil, English, Math, Science, Social</b> all must pass; ` +
+    `Hindi medium → <b>Hindi, English, Math, Science, Social</b> all must pass. ` +
+    `Failed / absent students still show Grand Total &amp; Grade, only Rank is blank. ` +
+    `<b>Overall Grade:</b> (Grand Total ÷ 5) rounded → matched against the Subject Grade bands ` +
+    `(e.g. 189 → 37.8 → 38 → B1). Grand Total out of <b>${smax*5}</b>.`;
+
+  const table = $('#rs-table');
+
+  if(!students.length){
+    table.innerHTML = '<tbody><tr><td class="empty">No students in Grade '+grade+'.</td></tr></tbody>';
+    renderStats([]);
+    applyFilters();
+    applyViewOptions();
+    return;
+  }
+
+  let h = '<thead>';
+  h += '<tr>';
+  h += '<th class="sticky-col" rowspan="2" data-col="sno">#</th>';
+  h += '<th class="sticky-col2" rowspan="2" data-col="name">Student</th>';
+  SUBJECTS.forEach(s=>{
+    h += `<th class="grp" colspan="4" data-col="grp-${s.key}">${s.name}</th>`;
+  });
+  h += '<th class="hl hl-theo" rowspan="2" data-col="theoryTotal">Theory<br>Total</th>';
+  h += '<th class="hl hl-int"  rowspan="2" data-col="internalTotal">Internal<br>Total</th>';
+  h += '<th class="hl" rowspan="2" data-col="grandTotal">Grand<br>Total</th>';
+  h += '<th class="hl" rowspan="2" data-col="grade">Grade</th>';
+  h += '<th class="hl" rowspan="2" data-col="rank">Rank</th>';
+  h += '</tr>';
+
+  h += '<tr>';
+  SUBJECTS.forEach(s=>{
+    h += `<th data-col="${s.key}">T</th>`;
+    h += `<th data-col="${s.key}">I</th>`;
+    h += `<th data-col="${s.key}">Tot</th>`;
+    h += `<th data-col="${s.key}">Gr</th>`;
+  });
+  h += '</tr>';
+  h += '</thead>';
+
+  h += '<tbody>';
+  rows.forEach((r,i)=>{
+    const st = r.student;
+    const status = r.eligible ? 'pass' : 'fail';
+    h += `<tr data-sid="${st.id}" data-name="${esc(st.name.toLowerCase())}" data-medium="${st.medium}" data-status="${status}">`;
+    h += `<td class="sticky-col" data-col="sno">${i+1}</td>`;
+    h += `<td class="sticky-col2" data-col="name">
+            <div class="sname">${esc(st.name)}</div>
+            <div class="smed ${st.medium}">${st.medium==='hindi'?'Hindi':'Tamil'}</div>
+          </td>`;
+
+    SUBJECTS.forEach(s=>{
+      const sd = r.subjects[s.key];
+      const isAbsent = sd.absent;
+      const fail = sd.fail && !isAbsent;
+      const cls = isAbsent ? 'absent' : (fail ? 'fail' : '');
+
+      const thTxt  = isAbsent ? 'AB' : (sd.th  === null ? '–' : sd.th);
+      const inTxt  = isAbsent ? 'AB' : (sd.inn === null ? '–' : sd.inn);
+      const totTxt = isAbsent ? 'AB' : (sd.total === null ? '–' : sd.total);
+      const gr     = isAbsent ? 'AB'
+                    : (sd.total === null ? '–'
+                       : (gradeFor(sd.total, cfg.subjectGrades) || '–'));
+
+      h += `<td class="dth ${cls}" data-col="${s.key}">${thTxt}</td>`;
+      h += `<td class="din ${isAbsent?'absent':''}" data-col="${s.key}">${inTxt}</td>`;
+      h += `<td class="dtot ${cls}" data-col="${s.key}">${totTxt}</td>`;
+      h += `<td class="dgr ${isAbsent?'absent':''}" data-col="${s.key}">${gr}</td>`;
+    });
+
+    h += `<td class="theo-total" data-col="theoryTotal">${r.theoryTotal}</td>`;
+    h += `<td class="int-total"  data-col="internalTotal">${r.internalTotal}</td>`;
+    h += `<td class="total-cell" data-col="grandTotal">${r.grand}</td>`;
+    h += `<td class="grade-cell" data-col="grade">${esc(r.grade) || '–'}</td>`;
+
+    if(r.eligible){
+      h += `<td class="rank-cell" data-col="rank">${r.rank ?? '–'}</td>`;
+    } else {
+      h += `<td class="rank-cell na" data-col="rank" title="Not eligible for rank">–</td>`;
+    }
+    h += '</tr>';
+  });
+  h += '</tbody>';
+
+  table.innerHTML = h;
+
+  applyFilters();
+  applyViewOptions();
+}
+
+/* =========================================================
+   RENDER : STATISTICS
+   ========================================================= */
+function renderStats(rows){
+  const stat = computeStats(rows);
+
+  let sh = `<thead><tr>
+      <th style="text-align:left">Subject</th>
+      <th>Total</th>
+      <th>Appeared</th>
+      <th>Pass</th>
+      <th>Fail</th>
+      <th style="background:#fef3c7;color:#b45309">Absent</th>
+      <th>Pass %</th>
+      <th>Fail %</th>
+    </tr></thead><tbody>`;
+
+  SUBJECTS.forEach(s=>{
+    const d = stat[s.key];
+    const pp = d.appeared ? ((d.pass/d.appeared)*100).toFixed(1) : '0.0';
+    const fp = d.appeared ? ((d.fail/d.appeared)*100).toFixed(1) : '0.0';
+    sh += `<tr>
+      <td style="text-align:left;font-weight:700">${s.name}</td>
+      <td>${d.total}</td>
+      <td>${d.appeared}</td>
+      <td style="color:#15803d;font-weight:700">${d.pass}</td>
+      <td style="color:#b91c1c;font-weight:700">${d.fail}</td>
+      <td style="background:#fef3c7;color:#b45309;font-weight:800">${d.absent}</td>
+      <td style="color:#15803d;font-weight:700">${pp}%</td>
+      <td style="color:#b91c1c;font-weight:700">${fp}%</td>
+    </tr>`;
+  });
+  sh += '</tbody>';
+  $('#rs-stats').innerHTML = sh;
+}
+
+/* =========================================================
+   RENDER : SETTINGS
+   ========================================================= */
+function renderSettings(){
+  const cfg = DB.settings[state.settingType];
+  $('#set-theory').value   = cfg.theoryMax;
+  $('#set-internal').value = cfg.internalMax;
+  $('#set-pass').value     = cfg.passMark;
+  renderGradeRows('#set-subj-grades', cfg.subjectGrades, 'subjectGrades');
+}
+
+function renderGradeRows(sel, list, key){
+  const el = $(sel);
+  if(!el) return;
+  if(!list.length){
+    el.innerHTML = '<div class="empty" style="padding:14px">No grade ranges. Tap “Add Row”.</div>';
+    return;
+  }
+  el.innerHTML = list.map((r,i)=>`
+    <div class="grade-row">
+      <input type="number" value="${r.min ?? 0}" data-key="${key}" data-i="${i}" data-f="min" inputmode="numeric">
+      <span class="sep">–</span>
+      <input type="number" value="${r.max ?? 0}" data-key="${key}" data-i="${i}" data-f="max" inputmode="numeric">
+      <span class="sep">=</span>
+      <input type="text" value="${esc(r.grade)}" data-key="${key}" data-i="${i}" data-f="grade" placeholder="Grade">
+      <button class="rm-btn" data-key="${key}" data-i="${i}" title="Remove">✕</button>
+    </div>
+  `).join('');
+}
+
+/* =========================================================
+   BUILD EXPORT SCHEMA
+   ========================================================= */
+function buildExportSchema(){
+  const view = state.view;
+  const visibleSubjects = SUBJECTS.filter(s => view[s.key] !== false);
+
+  const totalCols = [];
+  if(view.theoryTotal)   totalCols.push({key:'theoryTotal',   label:'Theory Total',   val:r=>r.theoryTotal});
+  if(view.internalTotal) totalCols.push({key:'internalTotal', label:'Internal Total', val:r=>r.internalTotal});
+  if(view.grandTotal)    totalCols.push({key:'grandTotal',    label:'Grand Total',    val:r=>r.grand});
+  if(view.grade)         totalCols.push({key:'grade',         label:'Grade',          val:r=>(r.grade||'–')});
+  if(view.rank)          totalCols.push({key:'rank',          label:'Rank',           val:r=>r.eligible ? (r.rank ?? '–') : 'NE'});
+
+  return { visibleSubjects, totalCols };
+}
+
+/* =========================================================
+   EXPORT — EXCEL
+   ========================================================= */
+function exportExcel(){
+  if(typeof XLSX === 'undefined'){ alert('Excel library not loaded.'); return; }
+  const rows = getFilteredRows();
+  if(!rows.length){ alert('No data to export.'); return; }
+
+  const cfg  = cfgFor(state.exam);
+  const { visibleSubjects, totalCols } = buildExportSchema();
+  if(!visibleSubjects.length && !totalCols.length){
+    alert('All columns are hidden. Please enable at least one column.');
+    return;
+  }
+
+  const totalColsCount = 3 + visibleSubjects.length * 4 + totalCols.length;
+
+  const aoa = [];
+  aoa.push([SCHOOL_NAME]);
+  aoa.push([`${examName(state.exam)} Examination — Grade ${state.grade}`]);
+  aoa.push([`Generated: ${new Date().toLocaleString()}`]);
+  aoa.push([]);
+
+  const h1 = ['S.No', 'Student Name', 'Medium'];
+  visibleSubjects.forEach(s => h1.push(s.name, '', '', ''));
+  totalCols.forEach(c => h1.push(c.label));
+  aoa.push(h1);
+
+  const h2 = ['', '', ''];
+  visibleSubjects.forEach(() => h2.push('T', 'I', 'Total', 'Grade'));
+  totalCols.forEach(() => h2.push(''));
+  aoa.push(h2);
+
+  rows.forEach((r, i) => {
+    const row = [i + 1, r.student.name, r.student.medium === 'hindi' ? 'Hindi' : 'Tamil'];
+    visibleSubjects.forEach(s => {
+      const sd = r.subjects[s.key];
+      if (sd.absent) {
+        row.push('AB', 'AB', 'AB', 'AB');
+      } else {
+        row.push(
+          sd.th === null ? '' : sd.th,
+          sd.inn === null ? '' : sd.inn,
+          sd.total === null ? '' : sd.total,
+          sd.total === null ? '' : (gradeFor(sd.total, cfg.subjectGrades) || '')
+        );
+      }
+    });
+    totalCols.forEach(c => row.push(c.val(r)));
+    aoa.push(row);
+  });
+
+  // Statistics section
+  aoa.push([]);
+  aoa.push([]);
+  const statsTitleRow = aoa.length;
+  aoa.push(['SUBJECT STATISTICS']);
+  aoa.push(['Subject', 'Total', 'Appeared', 'Pass', 'Fail', 'Absent', 'Pass %', 'Fail %']);
+
+  const stat = computeStats(rows);
+  SUBJECTS.forEach(s => {
+    const d = stat[s.key];
+    const pp = d.appeared ? ((d.pass/d.appeared)*100).toFixed(1) : '0.0';
+    const fp = d.appeared ? ((d.fail/d.appeared)*100).toFixed(1) : '0.0';
+    aoa.push([s.name, d.total, d.appeared, d.pass, d.fail, d.absent, pp + '%', fp + '%']);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  const merges = [];
+  merges.push({ s:{r:0,c:0}, e:{r:0,c:Math.max(totalColsCount, 8) - 1} });
+  merges.push({ s:{r:1,c:0}, e:{r:1,c:Math.max(totalColsCount, 8) - 1} });
+  merges.push({ s:{r:2,c:0}, e:{r:2,c:Math.max(totalColsCount, 8) - 1} });
+
+  visibleSubjects.forEach((s, idx) => {
+    const c0 = 3 + idx * 4;
+    merges.push({ s:{r:4,c:c0}, e:{r:4,c:c0 + 3} });
+  });
+
+  merges.push({ s:{r:4,c:0}, e:{r:5,c:0} });
+  merges.push({ s:{r:4,c:1}, e:{r:5,c:1} });
+  merges.push({ s:{r:4,c:2}, e:{r:5,c:2} });
+
+  const totalsStart = 3 + visibleSubjects.length * 4;
+  totalCols.forEach((c, i) => {
+    merges.push({ s:{r:4,c:totalsStart + i}, e:{r:5,c:totalsStart + i} });
+  });
+
+  merges.push({ s:{r:statsTitleRow,c:0}, e:{r:statsTitleRow,c:7} });
+
+  ws['!merges'] = merges;
+
+  const cols = [{wch:5},{wch:28},{wch:9}];
+  visibleSubjects.forEach(() => cols.push({wch:7},{wch:7},{wch:8},{wch:8}));
+  totalCols.forEach(() => cols.push({wch:13}));
+  ws['!cols'] = cols;
+
+  ws['!rows'] = [
+    {hpt:22},{hpt:18},{hpt:18},{hpt:6},{hpt:20},{hpt:20}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Result');
+
+  const fn = `Result_Grade${state.grade}_${examName(state.exam).replace(/\s+/g,'')}_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, fn);
+}
+
+/* =========================================================
+   EXPORT — PDF
+   ========================================================= */
+function exportPDF(){
+  if (!window.jspdf || !window.jspdf.jsPDF){
+    alert('PDF library not loaded. Please check your internet connection.');
+    return;
+  }
+  const rows = getFilteredRows();
+  if(!rows.length){ alert('No data to export.'); return; }
+
+  const cfg = cfgFor(state.exam);
+  const { visibleSubjects, totalCols } = buildExportSchema();
+  if(!visibleSubjects.length && !totalCols.length){
+    alert('All columns are hidden. Please enable at least one column.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+
+  const logo = localStorage.getItem(LOGO_KEY);
+  let textX = 12;
+  if (logo) {
+    try {
+      let fmt = 'JPEG';
+      const m = logo.match(/^data:image\/(png|jpe?g|webp)/i);
+      if (m) {
+        const ext = m[1].toLowerCase();
+        fmt = ext === 'png' ? 'PNG' : 'JPEG';
+      }
+      doc.addImage(logo, fmt, 10, 6, 18, 18);
+      textX = 32;
+    } catch(e){
+      console.warn('Logo embed failed', e);
+    }
+  }
+
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 58, 138);
+  doc.text(SCHOOL_NAME, textX, 13);
+
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
+  doc.text(`${examName(state.exam)} Examination — Grade ${state.grade}`, textX, 19);
+  doc.setFontSize(8);
+  doc.setTextColor(120, 120, 120);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, textX, 24);
+
+  doc.setDrawColor(200, 210, 230);
+  doc.setLineWidth(0.4);
+  doc.line(10, 27, pageW - 10, 27);
+
+  const headRow1 = [
+    { content: 'S.No', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+    { content: 'Student Name', rowSpan: 2, styles: { halign: 'left', valign: 'middle' } },
+    { content: 'Medium', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }
+  ];
+  visibleSubjects.forEach(s => {
+    headRow1.push({ content: s.name, colSpan: 4, styles: { halign: 'center', valign: 'middle' } });
+  });
+  totalCols.forEach(c => {
+    headRow1.push({ content: c.label, rowSpan: 2, styles: { halign: 'center', valign: 'middle' } });
+  });
+
+  const headRow2 = [];
+  visibleSubjects.forEach(() => {
+    headRow2.push({ content: 'T', styles: { halign: 'center' } });
+    headRow2.push({ content: 'I', styles: { halign: 'center' } });
+    headRow2.push({ content: 'Tot', styles: { halign: 'center' } });
+    headRow2.push({ content: 'Gr', styles: { halign: 'center' } });
+  });
+
+  const body = rows.map((r, i) => {
+    const row = [i + 1, r.student.name, r.student.medium === 'hindi' ? 'Hindi' : 'Tamil'];
+    visibleSubjects.forEach(s => {
+      const sd = r.subjects[s.key];
+      if (sd.absent) {
+        row.push('AB', 'AB', 'AB', 'AB');
+      } else {
+        row.push(
+          sd.th === null ? '–' : sd.th,
+          sd.inn === null ? '–' : sd.inn,
+          sd.total === null ? '–' : sd.total,
+          sd.total === null ? '–' : (gradeFor(sd.total, cfg.subjectGrades) || '–')
+        );
+      }
+    });
+    totalCols.forEach(c => row.push(c.val(r)));
+    return row;
+  });
+
+  doc.autoTable({
+    head: [headRow1, headRow2],
+    body: body,
+    startY: 30,
+    styles: {
+      fontSize: 7,
+      cellPadding: 1.2,
+      lineWidth: 0.1,
+      lineColor: [180, 195, 220],
+      valign: 'middle',
+      overflow: 'linebreak'
+    },
+    headStyles: {
+      fillColor: [30, 58, 138],
+      textColor: 255,
+      fontStyle: 'bold',
+      halign: 'center',
+      valign: 'middle',
+      fontSize: 7.5
+    },
+    bodyStyles: { halign: 'center' },
+    columnStyles: { 1: { halign: 'left', cellWidth: 32 } },
+    alternateRowStyles: { fillColor: [246, 249, 254] },
+    margin: { left: 6, right: 6, top: 30, bottom: 12 },
+    didParseCell: (data) => {
+      if (data.section !== 'body') return;
+      if (data.column.index < 3) return;
+      const colIdx = data.column.index - 3;
+      const subjectSpan = visibleSubjects.length * 4;
+      if (colIdx >= subjectSpan) return;
+      const subjIdx = Math.floor(colIdx / 4);
+      const fieldIdx = colIdx % 4;
+      const r = rows[data.row.index];
+      if (!r) return;
+      const sd = r.subjects[visibleSubjects[subjIdx].key];
+      if (!sd) return;
+
+      if (sd.absent) {
+        data.cell.styles.fillColor = [254, 243, 199];
+        data.cell.styles.textColor = [180, 83, 9];
+        data.cell.styles.fontStyle = 'bold';
+      } else if (sd.fail && fieldIdx !== 1) {
+        data.cell.styles.fillColor = [254, 226, 226];
+        data.cell.styles.textColor = [185, 28, 28];
+      }
+    },
+    didDrawPage: (data) => {
+      const curPage = doc.internal.getCurrentPageInfo().pageNumber;
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(
+        `Page ${curPage}`,
+        pageW - 14,
+        doc.internal.pageSize.getHeight() - 6,
+        { align: 'right' }
+      );
+      doc.text(
+        SCHOOL_NAME,
+        12,
+        doc.internal.pageSize.getHeight() - 6
+      );
+    }
+  });
+
+  const stat = computeStats(rows);
+  const statsBody = SUBJECTS.map(s => {
+    const d = stat[s.key];
+    const pp = d.appeared ? ((d.pass/d.appeared)*100).toFixed(1) : '0.0';
+    const fp = d.appeared ? ((d.fail/d.appeared)*100).toFixed(1) : '0.0';
+    return [s.name, d.total, d.appeared, d.pass, d.fail, d.absent, pp + '%', fp + '%'];
+  });
+
+  const lastY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY : 30;
+  const statsY = lastY + 10;
+
+  doc.setFontSize(10.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 58, 138);
+  doc.text('SUBJECT STATISTICS', 10, statsY);
+
+  doc.autoTable({
+    head: [['Subject', 'Total', 'Appeared', 'Pass', 'Fail', 'Absent', 'Pass %', 'Fail %']],
+    body: statsBody,
+    startY: statsY + 3,
+    styles: {
+      fontSize: 8,
+      cellPadding: 1.6,
+      lineWidth: 0.1,
+      lineColor: [180, 195, 220],
+      valign: 'middle',
+      halign: 'center'
+    },
+    headStyles: {
+      fillColor: [22, 163, 74],
+      textColor: 255,
+      fontStyle: 'bold',
+      halign: 'center',
+      fontSize: 8.5
+    },
+    bodyStyles: { halign: 'center' },
+    columnStyles: { 0: { halign: 'left', cellWidth: 40 } },
+    alternateRowStyles: { fillColor: [240, 253, 244] },
+    margin: { left: 6, right: 6, bottom: 12 },
+    didParseCell: (data) => {
+      if (data.section !== 'body') return;
+      if (data.column.index === 5 && Number(data.cell.raw) > 0) {
+        data.cell.styles.fillColor = [254, 243, 199];
+        data.cell.styles.textColor = [180, 83, 9];
+        data.cell.styles.fontStyle = 'bold';
+      }
+    }
+  });
+
+  const fn = `Result_Grade${state.grade}_${examName(state.exam).replace(/\s+/g,'')}_${new Date().toISOString().slice(0,10)}.pdf`;
+  doc.save(fn);
+}
+
+/* =========================================================
+   GLOBAL RENDER
+   ========================================================= */
+function renderAll(){
+  renderStudents();
+  renderMarks();
+  renderResults();
+  renderSettings();
+  renderViewOptions();
+  renderLogoPreview();
+  syncFilterUI();
+}
+
+function setGrade(g){
+  state.grade = String(g);
+  $$('.grade-select').forEach(s=>{ s.value = state.grade; });
+  state.editingStudentId = null;
+  renderStudents();
+  renderMarks();
+  renderResults();
+}
+
+function setExam(ex){
+  state.exam = ex;
+  $$('.exam-select').forEach(s=>{ s.value = state.exam; });
+  renderMarks();
+  renderResults();
+}
+
+/* =========================================================
+   TABS
+   ========================================================= */
+function switchTab(name){
+  $$('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  $$('.tab-panel').forEach(p=>p.classList.toggle('active', p.id === 'tab-'+name));
+  if(name==='students') renderStudents();
+  if(name==='marks')    { renderMarks(); syncFilterUI(); }
+  if(name==='results')  { renderResults(); syncFilterUI(); }
+  if(name==='settings') { renderSettings(); renderLogoPreview(); }
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+function init(){
+  DB = load();
+  applyLogo();
+
+  const gradeOpts = Array.from({length:10},(_,i)=>`<option value="${i+1}">Grade ${i+1}</option>`).join('');
+  $$('.grade-select').forEach(sel=>{
+    sel.innerHTML = gradeOpts;
+    sel.value = state.grade;
+    sel.addEventListener('change', e=>setGrade(e.target.value));
+  });
+
+  const examOpts = EXAMS.map(e=>`<option value="${e.key}">${e.name}</option>`).join('');
+  $$('.exam-select').forEach(sel=>{
+    sel.innerHTML = examOpts;
+    sel.value = state.exam;
+    sel.addEventListener('change', e=>setExam(e.target.value));
+  });
+
+  $$('.tabs button').forEach(b=>{
+    b.addEventListener('click', ()=>switchTab(b.dataset.tab));
+  });
+
+  /* Students */
+  $('#stu-add').addEventListener('click', addStudent);
+  $('#stu-name').addEventListener('keydown', e=>{ if(e.key==='Enter') addStudent(); });
+  $('#stu-file').addEventListener('change', e=>{
+    const f = e.target.files[0];
+    handleFile(f).then(()=>{ e.target.value = ''; });
+  });
+  $('#stu-template').addEventListener('click', downloadTemplate);
+
+  $('#stu-list').addEventListener('click', e=>{
+    const rm = e.target.closest('[data-remove]');
+    if(rm){ removeStudent(rm.dataset.remove); return; }
+    const ed = e.target.closest('[data-edit]');
+    if(ed){ startEditStudent(ed.dataset.edit); return; }
+    const sv = e.target.closest('[data-save-edit]');
+    if(sv){ saveEditStudent(sv.dataset.saveEdit); return; }
+    const cn = e.target.closest('[data-cancel-edit]');
+    if(cn){ cancelEditStudent(); return; }
+  });
+
+  $('#stu-list').addEventListener('keydown', e=>{
+    if(e.key !== 'Enter') return;
+    const inp = e.target;
+    if(!inp.matches('.edit-name')) return;
+    e.preventDefault();
+    const item = inp.closest('[data-edit-item]');
+    if(item) saveEditStudent(item.dataset.editItem);
+  });
+
+  /* View options */
+  $('#view-grid').addEventListener('change', e=>{
+    const t = e.target;
+    if(!t.classList.contains('vcol')) return;
+    state.view[t.dataset.col] = t.checked;
+    applyViewOptions();
+  });
+
+  $('#view-all').addEventListener('click', ()=>{
+    state.view = defaultView();
+    renderViewOptions();
+    applyViewOptions();
+  });
+
+  /* Export */
+  $('#exp-excel').addEventListener('click', exportExcel);
+  $('#exp-pdf').addEventListener('click', exportPDF);
+
+  /* Logo */
+  $('#logo-file').addEventListener('change', e=>{
+    const f = e.target.files[0];
+    handleLogoUpload(f);
+    e.target.value = '';
+  });
+  $('#logo-reset').addEventListener('click', resetLogo);
+
+  /* Marks entry */
+  $('#mk-table').addEventListener('input', e=>{
+    const inp = e.target;
+    if(!inp.matches('input[type=text]')) return;
+    const td = inp.closest('.mcell');
+    if(!td) return;
+    if(td.classList.contains('absent')){ inp.value = ''; return; }
+
+    const tr  = inp.closest('tr');
+    const sid = tr.dataset.sid;
+    const subj = td.dataset.subj;
+    const field = inp.dataset.field;
+    const cfg = cfgFor(state.exam);
+    const max = field === 'theory' ? cfg.theoryMax : cfg.internalMax;
+
+    let v = inp.value.replace(/[^0-9.]/g,'');
+    const parts = v.split('.');
+    if(parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
+
+    let exceeded = false;
+    const n = parseFloat(v);
+    if(!isNaN(n) && n > max){
+      v = String(max);
+      exceeded = true;
+    }
+
+    if(v !== inp.value) inp.value = v;
+
+    if(exceeded){
+      inp.classList.add('exceed');
+      setTimeout(()=>inp.classList.remove('exceed'), 500);
+    }
+
+    setMark(state.grade, state.exam, sid, subj, field, v);
+    updateRowTotals(tr);
+  });
+
+  $('#mk-table').addEventListener('change', e=>{
+    const chk = e.target;
+    if(!chk.matches('.ab')) return;
+    const td = chk.closest('.mcell');
+    const tr = chk.closest('tr');
+    if(!td || !tr) return;
+    const sid = tr.dataset.sid;
+    const subj = td.dataset.subj;
+    const isAbsent = chk.checked;
+
+    const thEl = $('.th', td), inEl = $('.in', td);
+    if(isAbsent){
+      if(thEl){ thEl.value = ''; }
+      if(inEl){ inEl.value = ''; }
+    }
+
+    setAbsent(state.grade, state.exam, sid, subj, isAbsent);
+    updateRowTotals(tr);
+  });
+
+  $('#mk-table').addEventListener('keydown', e=>{
+    if(e.key !== 'Enter') return;
+    const inp = e.target;
+    if(!inp.matches('input[type=text]')) return;
+    if(inp.disabled) return;
+    e.preventDefault();
+    const visibleInputs = $$('#mk-table tbody tr')
+      .filter(tr=>tr.style.display !== 'none')
+      .flatMap(tr=>$$('input[type=text]:not(:disabled)', tr));
+    const idx = visibleInputs.indexOf(inp);
+    if(idx > -1 && visibleInputs[idx+1]) visibleInputs[idx+1].focus();
+  });
+
+  /* Filters */
+  document.addEventListener('input', e=>{
+    const t = e.target;
+    if(t.classList.contains('filter-name')){
+      state.filter.name = t.value;
+    } else if(t.classList.contains('filter-medium')){
+      state.filter.medium = t.value;
+    } else if(t.classList.contains('filter-status')){
+      state.filter.status = t.value;
+    } else return;
+    applyFilters();
+    $$('.filter-name').forEach(i=>{ if(i!==t && i.value !== state.filter.name) i.value = state.filter.name; });
+    $$('.filter-medium').forEach(i=>{ if(i!==t && i.value !== state.filter.medium) i.value = state.filter.medium; });
+    $$('.filter-status').forEach(i=>{ if(i!==t && i.value !== state.filter.status) i.value = state.filter.status; });
+  });
+  document.addEventListener('change', e=>{
+    const t = e.target;
+    if(!t.matches('select')) return;
+    if(t.classList.contains('filter-medium')){
+      state.filter.medium = t.value;
+    } else if(t.classList.contains('filter-status')){
+      state.filter.status = t.value;
+    } else return;
+    applyFilters();
+    $$('.filter-medium').forEach(i=>{ if(i!==t && i.value !== state.filter.medium) i.value = state.filter.medium; });
+    $$('.filter-status').forEach(i=>{ if(i!==t && i.value !== state.filter.status) i.value = state.filter.status; });
+  });
+
+  /* Settings */
+  $('#set-examtype').addEventListener('click', e=>{
+    const b = e.target.closest('button');
+    if(!b) return;
+    state.settingType = b.dataset.t;
+    $$('#set-examtype button').forEach(x=>x.classList.toggle('active', x===b));
+    renderSettings();
+  });
+
+  ['set-theory','set-internal','set-pass'].forEach(id=>{
+    $('#'+id).addEventListener('input', e=>{
+      const cfg = DB.settings[state.settingType];
+      const val = num(e.target.value);
+      if(id==='set-theory')   cfg.theoryMax   = val ?? 0;
+      if(id==='set-internal') cfg.internalMax = val ?? 0;
+      if(id==='set-pass')     cfg.passMark    = val ?? 0;
+      save();
+      if(state.settingType === examType(state.exam)){
+        if($('#tab-marks').classList.contains('active')) renderMarks();
+        if($('#tab-results').classList.contains('active')) renderResults();
+      }
+    });
+  });
+
+  $('#tab-settings').addEventListener('input', e=>{
+    const inp = e.target;
+    if(!inp.dataset.key) return;
+    const {key, i, f} = inp.dataset;
+    const cfg = DB.settings[state.settingType];
+    const idx = parseInt(i,10);
+    if(!cfg[key] || !cfg[key][idx]) return;
+    if(f === 'grade'){
+      cfg[key][idx].grade = inp.value;
+    } else {
+      cfg[key][idx][f] = num(inp.value) ?? 0;
+    }
+    save();
+    /* live-update results when subject grade bands change */
+    if(key === 'subjectGrades'){
+      if($('#tab-marks').classList.contains('active')) renderMarks();
+      if($('#tab-results').classList.contains('active')) renderResults();
+    }
+  });
+
+  $('#tab-settings').addEventListener('click', e=>{
+    const btn = e.target.closest('.rm-btn');
+    if(!btn) return;
+    const {key, i} = btn.dataset;
+    const cfg = DB.settings[state.settingType];
+    cfg[key].splice(parseInt(i,10), 1);
+    save();
+    renderSettings();
+    if(key === 'subjectGrades'){
+      if($('#tab-marks').classList.contains('active')) renderMarks();
+      if($('#tab-results').classList.contains('active')) renderResults();
+    }
+  });
+
+  $('#add-subj-grade').addEventListener('click', ()=>{
+    const cfg = DB.settings[state.settingType];
+    const last = cfg.subjectGrades[cfg.subjectGrades.length-1];
+    const min = last ? ((last.max ?? 0) + 1) : 0;
+    cfg.subjectGrades.push({min, max: min+9, grade:''});
+    save();
+    renderSettings();
+    if($('#tab-marks').classList.contains('active')) renderMarks();
+    if($('#tab-results').classList.contains('active')) renderResults();
+  });
+
+  /* Backup / Restore / Clear */
+  $('#data-backup').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mark-register-backup-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  });
+
+  $('#data-restore-btn').addEventListener('click', ()=>$('#data-restore').click());
+
+  $('#data-restore').addEventListener('change', async e=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    try{
+      const text = await f.text();
+      const d = JSON.parse(text);
+      if(!d || typeof d !== 'object') throw new Error('Invalid file');
+      const base = defaultDB();
+      DB = {
+        v: 6,
+        settings: {
+          pa:   Object.assign({}, base.settings.pa,   (d.settings||{}).pa   || {}),
+          term: Object.assign({}, base.settings.term, (d.settings||{}).term || {})
+        },
+        students: d.students || {},
+        marks:    d.marks    || {}
+      };
+      saveNow();
+      renderAll();
+      alert('Backup restored successfully.');
+    }catch(err){
+      alert('Restore failed: ' + err.message);
+    }
+    e.target.value = '';
+  });
+
+  $('#data-clear').addEventListener('click', ()=>{
+    if(!confirm('This will DELETE all students, marks and settings.\nThis cannot be undone. Continue?')) return;
+    if(!confirm('Are you absolutely sure?')) return;
+    localStorage.removeItem(STORE_KEY);
+    DB = defaultDB();
+    saveNow();
+    renderAll();
+    alert('All data cleared.');
+  });
+
+  renderAll();
+}
+
+init();
+</script>
+</body>
+</html>
